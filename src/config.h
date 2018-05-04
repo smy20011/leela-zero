@@ -1,5 +1,6 @@
 /*
     This file is part of Leela Zero.
+    Copyright (C) 2017-2018 Gian-Carlo Pascutto and contributors
 
     Leela Zero is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -79,7 +80,7 @@
 //#define USE_TUNER
 
 #define PROGRAM_NAME "Leela Zero"
-#define PROGRAM_VERSION "0.13"
+#define PROGRAM_VERSION "0.14"
 
 /*
  * OpenBLAS limitation: the default configuration on some Linuxes
