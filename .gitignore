@@ -8,3 +8,10 @@ training/tf/venv
 leelaz-model*
 *.orig
 leelaz_opencl_tuning
+bazel*/
+src/client
+src/tensorflow
+src/serving
+*.swp
+*.a
+tags
