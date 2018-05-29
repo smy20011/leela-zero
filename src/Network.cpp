@@ -31,6 +31,8 @@
 #include <boost/utility.hpp>
 #include <boost/format.hpp>
 #include <boost/spirit/home/x3.hpp>
+#include "client/tensorflow_serving/apis/prediction_service.grpc.pb.h"
+#include "client/tensorflow_serving/apis/predict.pb.h"
 
 #ifdef __APPLE__
 #include <Accelerate/Accelerate.h>
@@ -92,6 +94,10 @@ static bool value_head_not_stm;
 
 // Symmetry helper
 static std::array<std::array<int, BOARD_SQUARES>, 8> symmetry_nn_idx_table;
+
+// Remote inference
+static std::shared_ptr<tensorflow::serving::PredictionService::StubInterface> stub;
+
 
 void Network::benchmark(const GameState* const state, const int iterations) {
     const auto cpus = cfg_num_threads;
@@ -918,6 +924,19 @@ Network::Netresult Network::get_scored_moves(
     return result;
 }
 
+Network::Netresult predict_remote(const std::vector<net_t> &input_data) {
+    assert(stub);
+    constexpr auto width = BOARD_SIZE;
+    constexpr auto height = BOARD_SIZE;
+    grpc::ClientContext context;
+
+    tensorflow::serving::PredictRequest request;
+    request.mutable_model_spec()->set_name("leela");
+    tensorflow::TensorProto input_tensor;
+
+    return Network::Netresult();
+}
+
 Network::Netresult Network::get_scored_moves_internal(
     const GameState* const state, const int symmetry) {
     assert(symmetry >= 0 && symmetry <= 7);
@@ -925,6 +944,9 @@ Network::Netresult Network::get_scored_moves_internal(
     constexpr auto height = BOARD_SIZE;
 
     const auto input_data = gather_features(state, symmetry);
+    if (stub) {
+	return predict_remote(input_data);
+    }
     std::vector<float> policy_data(OUTPUTS_POLICY * width * height);
     std::vector<float> value_data(OUTPUTS_VALUE * width * height);
 #ifdef USE_HALF

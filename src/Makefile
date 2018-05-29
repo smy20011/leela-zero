@@ -21,8 +21,10 @@ clang:
 		LDFLAGS='$(LDFLAGS) -flto -fuse-linker-plugin' \
 		leelaz
 
-DYNAMIC_LIBS = -lboost_program_options -lpthread -lz
-LIBS =
+DYNAMIC_LIBS = -lboost_program_options -lpthread -lz -L/usr/local/lib -lgrpc++ -lprotobuf -pthread
+CXXFLAGS += -pthread -I/usr/local/include
+LIBS = -L . -ltfclient
+CLIENT_OBJECTS = $(shell find client/ -type f -name "*.cc" -print | sed 's/cc$$/o/g')
 
 ifeq ($(THE_OS),Linux)
 # for Linux with OpenBLAS
@@ -42,7 +44,7 @@ endif
 #CXXFLAGS += -I/opt/intel/mkl/include
 #LDFLAGS  += -L/opt/intel/mkl/lib/intel64/
 
-CXXFLAGS += -I.
+CXXFLAGS += -I. -I client
 CPPFLAGS += -MD -MP
 
 sources = Network.cpp FullBoard.cpp KoState.cpp Training.cpp \
@@ -60,10 +62,22 @@ deps = $(sources:%.cpp=%.d)
 %.o: %.cpp
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-leelaz: $(objects)
-	$(CXX) $(LDFLAGS) -o $@ $^ $(LIBS) $(DYNAMIC_LIBS)
+%.o: %.cc
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+libtfclient.a: $(CLIENT_OBJECTS)
+	gcc-ar rcs libtfclient.a $^
+
+leelaz: $(objects) libtfclient.a
+	$(CXX) $(LDFLAGS) -o $@ $(objects) $(LIBS) $(DYNAMIC_LIBS)
+
+proto_files:
+	bash -c "protoc -I tensorflow/ -I serving/ --grpc_out=client/ --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` serving/tensorflow_serving/apis/prediction_service.proto"
+	bash -c "shopt -s globstar; protoc -I tensorflow/ -I serving/ --cpp_out=client/ serving/**/*.proto"
+	bash -c "shopt -s globstar; protoc -I tensorflow/ -I serving/ --cpp_out=client/ tensorflow/tensorflow/core/**/*.proto"
 
 clean:
 	-$(RM) leelaz $(objects) $(deps)
 
-.PHONY: clean default debug clang
+print-%  : ; @echo $* = $($*)
+.PHONY: clean default debug clang proto_files
